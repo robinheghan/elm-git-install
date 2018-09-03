@@ -18,17 +18,27 @@ function ensureDependencies() {
     fs.mkdirSync('elm-stuff/gitdeps');
   }
 
+  let next = () => {
+    console.log('done');
+  }
+
   for (const url in gitDeps) {
     const ref = gitDeps[url];
     const subPath = pathify(url);
     const path = `elm-stuff/gitdeps/${subPath}`;
 
     if (fs.existsSync(path)) {
-      updateDependency(path, ref);
+      next = ((next) => {
+        return () => updateDependency(path, ref, next);
+      })(next);
     } else {
-      cloneDependency(url, path, ref);
+      next = ((next) => {
+        return () => cloneDependency(url, path, ref, next);
+      })(next);
     }
   }
+
+  next();
 }
 
 function pathify(url) {
@@ -42,22 +52,24 @@ function pathify(url) {
   return url.slice(colon, end);
 }
 
-function cloneDependency(url, path, ref) {
+function cloneDependency(url, path, ref, next) {
   console.log(`cloning ${url} into ${path} and checking out ${ref}`);
 
   git.clone(url, path, () => {
     const git = require('simple-git')(path);
     git.checkout(ref);
     console.log('done');
+    next();
   });
 }
 
-function updateDependency(path, ref) {
+function updateDependency(path, ref, next) {
   console.log(`updating ${path} to ${ref}`);
   const git = require('simple-git')(path);
 
   git.pull(() => {
     git.checkout(ref);
     console.log('done');
+    next();
   });
 }
