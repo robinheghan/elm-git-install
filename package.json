@@ -1,0 +1,22 @@
+{
+  "name": "elm-git-install",
+  "version": "0.1.0",
+  "description": "An extension of elm's package manager with support for private git packages.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Skinney/elm-git-install.git"
+  },
+  "author": "Robin Heggelund Hansen",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/Skinney/elm-git-install/issues"
+  },
+  "homepage": "https://github.com/Skinney/elm-git-install#readme",
+  "dependencies": {
+    "simple-git": "^1.96.0"
+  }
+}
