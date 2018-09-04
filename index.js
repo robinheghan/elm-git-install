@@ -1,5 +1,10 @@
 const fs = require('fs');
-const git = require('simple-git')();
+const path = require('path');
+const gitInPath = require('simple-git');
+
+const gitRoot = gitInPath(); // git client for current working directory
+const storagePath = path.join('elm-stuff', 'gitdeps');
+
 
 const args = process.argv.slice(2);
 
@@ -9,41 +14,41 @@ if (args.length === 0) {
   console.error('This tool doesn\'t support any arguments (yet)');
 }
 
+
 function ensureDependencies() {
-  const elmFile = fs.readFileSync('elm.json', { encoding: 'utf-8' });
-  const elmJson = JSON.parse(elmFile);
+  const elmJson = readElmJson('elm.json');
   const gitDeps = elmJson['git-dependencies'];
 
-  if (!fs.existsSync('elm-stuff/gitdeps')) {
-    fs.mkdirSync('elm-stuff/gitdeps');
+  if (!fs.existsSync(storagePath)) {
+    fs.mkdirSync(storagePath);
   }
 
-  let next = (opts) => {
-    const newElmFile = JSON.stringify(opts, null, 4);
-    fs.writeFileSync('elm.json', newElmFile, { encoding: 'utf-8' });
-  }
+  elmJson['source-directories'] = elmJson['source-directories'].filter(
+    (src) => !src.startsWith(storagePath)
+  );
 
+  const next = buildUpdateChain(gitDeps, writeElmJson);
+  next(elmJson);
+}
+
+function buildUpdateChain(gitDeps, next) {
   for (const url in gitDeps) {
     const ref = gitDeps[url];
     const subPath = pathify(url);
-    const path = `elm-stuff/gitdeps/${subPath}`;
+    const repoPath = path.join(storagePath, subPath);
 
-    if (fs.existsSync(path)) {
+    if (fs.existsSync(repoPath)) {
       next = ((next) => {
-        return (opts) => updateDependency(path, ref, opts, next);
+        return (opts) => updateDependency(repoPath, ref, opts, next);
       })(next);
     } else {
       next = ((next) => {
-        return (opts) => cloneDependency(url, path, ref, opts, next);
+        return (opts) => cloneDependency(url, repoPath, ref, opts, next);
       })(next);
     }
   }
 
-  elmJson['source-directories'] = elmJson['source-directories'].filter(
-    (src) => !src.startsWith('elm-stuff/gitdeps')
-  );
-
-  next(elmJson);
+  return next;
 }
 
 function pathify(url) {
@@ -57,55 +62,70 @@ function pathify(url) {
   return url.slice(colon, end);
 }
 
-function cloneDependency(url, path, ref, opts, next) {
-  console.log(`cloning ${url} into ${path} and checking out ${ref}`);
+function cloneDependency(url, repoPath, ref, opts, next) {
+  console.log(`cloning ${url} into ${repoPath} and checking out ${ref}`);
 
-  git.clone(url, path, () => {
-    const git = require('simple-git')(path);
+  gitRoot.clone(url, repoPath, () => {
+    const git = gitInPath(repoPath);
     git.checkout(ref, () => {
-      afterUpdate(path, opts, next);
+      afterCheckout(repoPath, opts, next);
     });
   });
 }
 
-function updateDependency(path, ref, opts, next) {
-  console.log(`updating ${path} to ${ref}`);
-  const git = require('simple-git')(path);
+function updateDependency(repoPath, ref, opts, next) {
+  console.log(`updating ${repoPath} to ${ref}`);
+  const git = gitInPath(repoPath);
 
   git.pull(() => {
     git.checkout(ref, () => {
-      afterUpdate(path, opts, next);
+      afterCheckout(repoPath, opts, next);
     });
   });
 }
 
-function afterUpdate(path, opts, next) {
-  const depElmFile = fs.readFileSync(path + '/elm.json', { encoding: 'utf-8' });
-  const depElmJson = JSON.parse(depElmFile);
+function afterCheckout(repoPath, opts, next) {
+  const depElmJson = readElmJson(path.join(repoPath, 'elm.json'));
 
-  const sourceObj = {};
   const depSources = depElmJson['source-directories']
         .filter((src) => {
-          return !src.startsWith('elm-stuff/gitdeps');
+          return !src.startsWith(storagePath);
         })
         .map((src) => {
-          return `${path}/${src}`;
+          return path.join(repoPath, src);
         });
 
-  const sources = opts['source-directories'].concat(depSources);
-
-  for (let src of sources) {
-    sourceObj[src] = true;
-  }
-
-  const newSources = [];
-  for (let src in sourceObj) {
-    newSources.push(src);
-  }
-
+  const newSources = dedupe(opts['source-directories'], depSources);
   newSources.sort();
   opts['source-directories'] = newSources;
 
   console.log('done');
   next(opts);
+}
+
+function dedupe(arr1, arr2) {
+  const obj = {};
+  const combined = arr1.concat(arr2);
+
+  for (let i of combined) {
+    obj[i] = true;
+  }
+
+  const result = [];
+  for (let i in obj) {
+    result.push(i);
+  }
+
+  return result;
+}
+
+
+function readElmJson(path) {
+  const elmFile = fs.readFileSync(path, { encoding: 'utf-8' });
+  return JSON.parse(elmFile);
+}
+
+function writeElmJson(elmJson) {
+    const newElmFile = JSON.stringify(elmJson, null, 4);
+    fs.writeFileSync('elm.json', newElmFile, { encoding: 'utf-8' });
 }
