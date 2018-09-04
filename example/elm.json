@@ -3,6 +3,7 @@
     "source-directories": [
         "elm-stuff/gitdeps/Skinney/elm-git-example1/src",
         "elm-stuff/gitdeps/Skinney/elm-git-example2/src",
+        "elm-stuff/gitdeps/Skinney/elm-git-example3/src",
         "src"
     ],
     "elm-version": "0.19.0",

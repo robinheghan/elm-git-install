@@ -86,20 +86,32 @@ function updateDependency(repoPath, ref, opts, next) {
 
 function afterCheckout(repoPath, opts, next) {
   const depElmJson = readElmJson(path.join(repoPath, 'elm.json'));
+  const depSources = depElmJson['source-directories'];
+  const depGitDeps = depElmJson['git-dependencies'] || {};
 
-  const depSources = depElmJson['source-directories']
-        .filter((src) => {
-          return !src.startsWith(storagePath);
-        })
-        .map((src) => {
-          return path.join(repoPath, src);
-        });
+  next = ((next) => {
+    return (opts) => populateSources(repoPath, depSources, opts, next);
+  })(next);
+
+  next = buildUpdateChain(depGitDeps, next);
+
+  console.log('done');
+  next(opts);
+}
+
+function populateSources(repoPath, depSources, opts, next) {
+  depSources = depSources
+    .filter((src) => {
+      return !src.startsWith(storagePath);
+    })
+    .map((src) => {
+      return path.join(repoPath, src);
+    });
 
   const newSources = dedupe(opts['source-directories'], depSources);
   newSources.sort();
   opts['source-directories'] = newSources;
 
-  console.log('done');
   next(opts);
 }
 
