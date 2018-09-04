@@ -67,8 +67,15 @@ function cloneDependency(url, repoPath, ref, opts, next) {
 
   gitRoot.clone(url, repoPath, () => {
     const git = gitInPath(repoPath);
-    git.checkout(ref, () => {
-      afterCheckout(repoPath, opts, next);
+    git.branch((err, branchSummary) => {
+      if (refIsBranch(branchSummary, ref)) {
+        console.error('Branches are not supported, use semver tags or sha\'s.');
+        return;
+      }
+
+      git.checkout(ref, () => {
+        afterCheckout(repoPath, opts, next);
+      });
     });
   });
 }
@@ -78,10 +85,22 @@ function updateDependency(repoPath, ref, opts, next) {
   const git = gitInPath(repoPath);
 
   git.pull(() => {
-    git.checkout(ref, () => {
-      afterCheckout(repoPath, opts, next);
+    git.branch((err, branchSummary) => {
+      if (refIsBranch(branchSummary, ref)) {
+        console.error('Branches are not supported, use semver tags or sha\'s.');
+        return;
+      }
+
+      git.checkout(ref, () => {
+        afterCheckout(repoPath, opts, next);
+      });
     });
   });
+}
+
+function refIsBranch(branchSummary, ref) {
+  const branches = branchSummary.all.map((b) => b.replace('remotes/origin/', ''));
+  return branches.indexOf(ref) >= 0;
 }
 
 function afterCheckout(repoPath, opts, next) {
