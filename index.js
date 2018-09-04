@@ -11,7 +11,7 @@ const args = process.argv.slice(2);
 if (args.length === 0) {
   ensureDependencies();
 } else {
-  console.error('This tool doesn\'t support any arguments (yet)');
+  console.error('This tool doesn\'t take any arguments');
 }
 
 
