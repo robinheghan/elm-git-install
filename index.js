@@ -84,9 +84,13 @@ function afterUpdate(path, opts, next) {
   const depElmJson = JSON.parse(depElmFile);
 
   const sourceObj = {};
-  const depSources = depElmJson['source-directories'].map((src) => {
-    return `${path}/${src}`;
-  });
+  const depSources = depElmJson['source-directories']
+        .filter((src) => {
+          return !src.startsWith('elm-stuff/gitdeps');
+        })
+        .map((src) => {
+          return `${path}/${src}`;
+        });
 
   const sources = opts['source-directories'].concat(depSources);
 
