@@ -1,0 +1,6 @@
+{
+    "git-dependencies": {
+        "git@github.com:Skinney/elm-git-example1.git": "dbcea8b",
+        "git@github.com:Skinney/elm-git-example2.git": "0.0.1"
+    }
+}

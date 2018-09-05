@@ -23,9 +23,5 @@
     "test-dependencies": {
         "direct": {},
         "indirect": {}
-    },
-    "git-dependencies": {
-        "git@github.com:Skinney/elm-git-example1.git": "master",
-        "git@github.com:Skinney/elm-git-example2.git": "master"
     }
 }

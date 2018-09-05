@@ -16,7 +16,7 @@ if (args.length === 0) {
 
 
 function ensureDependencies() {
-  const elmJson = readElmJson('elm.json');
+  const elmJson = readElmJson('');
   const gitDeps = elmJson['git-dependencies'];
 
   if (!fs.existsSync(storagePath)) {
@@ -114,7 +114,7 @@ function refIsBranch(branchSummary, tagSummary, ref) {
 }
 
 function afterCheckout(repoPath, opts, next) {
-  const depElmJson = readElmJson(path.join(repoPath, 'elm.json'));
+  const depElmJson = readElmJson(repoPath);
   const depSources = depElmJson['source-directories'];
   const depGitDeps = depElmJson['git-dependencies'] || {};
 
@@ -161,12 +161,34 @@ function dedupe(arr1, arr2) {
 }
 
 
-function readElmJson(path) {
-  const elmFile = fs.readFileSync(path, { encoding: 'utf-8' });
-  return JSON.parse(elmFile);
+function readElmJson(repoPath) {
+  let elmFilePath = path.join(repoPath, 'elm.json');
+  let gitDepsPath = path.join(repoPath, 'elm-git.json');
+
+  let elmFileJson = {};
+  if (fs.existsSync(elmFilePath)) {
+    const elmFile = fs.readFileSync(elmFilePath, { encoding: 'utf-8' });
+    elmFileJson = JSON.parse(elmFile);
+  }
+
+  let gitDepsJson = {};
+  if (fs.existsSync(gitDepsPath)) {
+    const gitDeps = fs.readFileSync(gitDepsPath, { encoding: 'utf-8' });
+    gitDepsJson = JSON.parse(gitDeps);
+  }
+
+  return Object.assign(elmFileJson, gitDepsJson);
 }
 
 function writeElmJson(elmJson) {
-    const newElmFile = JSON.stringify(elmJson, null, 4);
-    fs.writeFileSync('elm.json', newElmFile, { encoding: 'utf-8' });
+  const oldElmFile = fs.readFileSync('elm.json', { encoding: 'utf-8' });
+  const oldElmJson = JSON.parse(oldElmFile);
+
+  const newElmJson = {};
+  for (const key in oldElmJson) {
+    newElmJson[key] = elmJson[key]
+  }
+
+  const newElmFile = JSON.stringify(newElmJson, null, 4);
+  fs.writeFileSync('elm.json', newElmFile, { encoding: 'utf-8' });
 }
