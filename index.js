@@ -75,8 +75,15 @@ function updateDependency(repoPath, ref, opts, next) {
   console.log(`updating ${repoPath} to ${ref}`);
   const git = gitInPath(repoPath);
 
-  git.fetch(['origin'], () => {
-    afterUpdate(git, repoPath, ref, opts, next);
+  git.branch((err, branchSummary) => {
+    if (branchSummary.current === ref) {
+      afterCheckout(repoPath, opts, next);
+      return;
+    }
+
+    git.fetch(['origin'], () => {
+      afterUpdate(git, repoPath, ref, opts, next);
+    });
   });
 }
 
