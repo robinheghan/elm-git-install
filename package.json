@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/Skinney/elm-git-install#readme",
   "dependencies": {
+    "is-git-url": "^1.0.0",
     "simple-git": "^1.96.0"
   }
 }
