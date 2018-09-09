@@ -30,6 +30,10 @@ function ensureDependencies() {
         elmJson['git-dependencies'].direct
         : elmJson['git-dependencies'];
 
+  if (!fs.existsSync('elm-stuff')) {
+    fs.mkdirSync('elm-stuff');
+  }
+  
   if (!fs.existsSync(storagePath)) {
     fs.mkdirSync(storagePath);
   }
