@@ -1,15 +1,57 @@
-# elm-git-install
+# elm-git-install (alpha)
 
-This is an extension to the Elm platform that allows installing packages from any git url. The git repository will be cloned into the `elm-stuff` folder, the specified tag or sha will be checked out, and the path to the package's source directory will be added to the top-level elm.json file.
+__Note: This tool is meant for businesses who whishes to use their internal packages without exposing them to the world wide web. If you're working on an open-source library, you should use Elm's builtin package manager.__
 
-This tool will not let you install packages containing ports, kernel or debug code. It does help you installing packages that you, for some reason or other, do not want to publish to Elm's public package repository.
+This tool allows you to install Elm packages using git. Any git remote is supported, and you can specify which commit SHA or git tag (preferably semver formated) you wan't to use. Other than supporting git remotes, the tool aims to mimick the behaviour of Elm's builtin package manger.
 
 ## How to use
 
-Add an object called "git-dependencies" to your `elm.json` file, containing a mapping of git url => tag or sha. Running the program will then download the correct version from git and add the project to the `source-directories` entry in your elm.json file.
+__Note: `elm-git-install` haven't been published yet. This section just shows how it all will work.__
 
-Look into the `example` folder for more information.
+First, install using `npm`: `npm install elm-git-install`
 
-## WIP
+Then create an `elm-git.json` file in your root directory.
 
-This package is a work in progress. There's a bunch of stuff not added yet, like dependency propogation and error handling. Use at your own risk.
+If your project is an Elm application it should look like this:
+
+```
+{
+    "direct": {
+        "git@github.com:Skinney/elm-git-example1.git": "1.0.0",
+        "git@github.com:Skinney/elm-git-example2.git": "1.0.2"
+    },
+    "indirect": {
+        "git@github.com:Skinney/elm-git-example3.git": "1.0.0"
+    }
+}
+```
+
+The `indirect` object will be filled out automatically any time a new transitive dependency is discovered (meaning you can leave it blank).
+
+If your project is an Elm package, it should look like this:
+
+```
+{
+  "git-dependencies": {
+    "git@github.com:Skinney/elm-git-example3.git": "1.0.0 <= v < 2.0.0"
+  }
+}
+```
+
+For both applications and packages, you can specify a git SHA or tag instead of a semver formated tag.
+
+You can take a look in the `example` folder for a practical example.
+
+## How does it work
+
+In short, the tool looks up the dependencies in your `elm-git.json` file and clones them into your `elm-stuff` folder, which is likely not in version control. The `src` directory of these repos will then be added to your `elm.json` file under the `source-directories` property so Elm's compiler will see the sources.
+
+If your git dependencies makes use of semver formatted tags, `elm-git-install` will try to make sure that any version ranges specified in your git packages are respected.
+
+## Why can't I specify a git branch?
+
+Branches are, by default, a moving target and shouldn't be relied upon for dependency management. While both SHAs and tags can change in git, they are much more likely to remain static over their lifetime, and so fits better as a target for dependency resolution.
+
+## Work in Progress
+
+`elm-git-install` is currently in alpha. There will be bugs and missing features, and the code is in flux. If you want to participate, then reporting bugs and discussing the already existing issues is the current way to go.
