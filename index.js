@@ -68,11 +68,11 @@ function buildUpdateChain(gitDeps, next) {
 
     if (fs.existsSync(repoPath)) {
       next = ((next) => {
-        return (opts) => updateDependency(subPath, repoPath, ref, opts, next);
+        return (opts) => updateDependency(url, repoPath, ref, opts, next);
       })(next);
     } else {
       next = ((next) => {
-        return (opts) => cloneDependency(url, subPath, repoPath, ref, opts, next);
+        return (opts) => cloneDependency(url, repoPath, ref, opts, next);
       })(next);
     }
   }
@@ -91,7 +91,9 @@ function pathify(url) {
   return url.slice(colon, end);
 }
 
-function cloneDependency(url, name, repoPath, ref, opts, next) {
+function cloneDependency(url, repoPath, ref, opts, next) {
+  const name = pathify(url);
+
   gitRoot.clone(url, repoPath, (err) => {
     if (err) {
       console.error(err);
@@ -101,26 +103,27 @@ function cloneDependency(url, name, repoPath, ref, opts, next) {
     const git = gitInPath(repoPath);
     resolveRef(git, repoPath, ref, opts, (ref) => {
       console.log(`${name} => ${ref}`);
-      afterUpdate(git, repoPath, ref, opts, next);
+      afterUpdate(git, url, repoPath, ref, opts, next);
     });
   });
 }
 
-function updateDependency(name, repoPath, ref, opts, next) {
+function updateDependency(url, repoPath, ref, opts, next) {
   const git = gitInPath(repoPath);
+  const name = pathify(url);
 
-  resolveRef(git, repoPath, ref, opts, (resolvedRef) => {
+  resolveRef(git, url, repoPath, ref, opts, (resolvedRef) => {
     git.branch((err, branchSummary) => {
       if (resolvedRef != null && branchSummary.current === resolvedRef) {
         console.log(`${name} => ${resolvedRef}`);
-        afterCheckout(repoPath, opts, next);
+        afterCheckout(url, repoPath, resolvedRef, opts, next);
         return;
       }
 
       // If range has been coerced to a version, we know we have it already
       if (ref !== resolvedRef && semver.valid(resolvedRef)) {
         console.log(`${name} => ${resolvedRef}`);
-        afterUpdate(git, repoPath, resolvedRef, opts, next);
+        afterUpdate(git, url, repoPath, resolvedRef, opts, next);
         return;
       }
 
@@ -131,24 +134,35 @@ function updateDependency(name, repoPath, ref, opts, next) {
         }
 
         if (resolvedRef == null) {
-          resolveRef(git, repoPath, ref, opts, (newResolvedRef) => {
+          resolveRef(git, url, repoPath, ref, opts, (newResolvedRef) => {
             console.log(`${name} => ${newResolvedRef}`);
-            afterUpdate(git, repoPath, newResolvedRef, opts, next);
+            afterUpdate(git, url, repoPath, newResolvedRef, opts, next);
           });
         } else {
           console.log(`${name} => ${resolvedRef}`);
-          afterUpdate(git, repoPath, resolvedRef, opts, next);
+          afterUpdate(git, url, repoPath, resolvedRef, opts, next);
         }
       });
     });
   });
 }
 
-function resolveRef(git, repoPath, ref, opts, next) {
+function resolveRef(git, url, repoPath, ref, opts, next) {
   const semverRange = toSemVerRange(ref);
   if (semverRange == null) {
     next(ref);
     return;
+  }
+
+  const lockedVersion = opts['locked'][url];
+  if (lockedVersion) {
+    // TODO: Handle cases where locked version can change to a narrower version
+    // TODO: Halt program execution
+    if (semver.valid(lockedVersion) && !semver.satisfies(lockedVersion, semverRange)) {
+      console.error(`A dependency expects that ${url} satisfies ${ref}, but is locked at ${lockedVersion}`);
+    }
+
+    return lockedVersion;
   }
 
   git.tags((_, tagSummary) => {
@@ -158,7 +172,7 @@ function resolveRef(git, repoPath, ref, opts, next) {
   });
 }
 
-function afterUpdate(git, repoPath, ref, opts, next) {
+function afterUpdate(git, url, repoPath, ref, opts, next) {
   git.tags((_, tagSummary) => {
     git.branch((err, branchSummary) => {
       if (refIsBranch(branchSummary, tagSummary, ref)) {
@@ -172,7 +186,7 @@ function afterUpdate(git, repoPath, ref, opts, next) {
           return;
         }
 
-        afterCheckout(repoPath, opts, next);
+        afterCheckout(url, repoPath, ref, opts, next);
       });
     });
   });
@@ -196,7 +210,7 @@ function refIsBranch(branchSummary, tagSummary, ref) {
   return branches[ref];
 }
 
-function afterCheckout(repoPath, opts, next) {
+function afterCheckout(url, repoPath, ref, opts, next) {
   const depElmJson = readElmJson(repoPath);
 
   const verificationError = verifyPackageElmJson(depElmJson);
@@ -205,6 +219,8 @@ function afterCheckout(repoPath, opts, next) {
     console.log(verificationError);
     return;
   }
+
+  opts['locked'][url] = ref;
   
   const depSources = ['src']; // Can packages have source directories?
   const depGitDeps = depElmJson['git-dependencies'] || {};
@@ -282,6 +298,34 @@ function writeElmJson(elmJson) {
 
   const newElmFile = JSON.stringify(newElmJson, null, 4);
   fs.writeFileSync('elm.json', newElmFile, { encoding: 'utf-8' });
+
+  if (elmJson.type !== 'application') {
+    return;
+  }
+
+  const locked = elmJson['locked'];
+  const oldGitDeps = elmJson['git-dependencies'];
+  const newDirectGitDeps = {};
+  const newIndirectGitDeps = {};
+
+  for (const url in locked) {
+    if (url in oldGitDeps.direct) {
+      newDirectGitDeps[url] = locked[url];
+    }
+  }
+
+  for (const url in locked) {
+    if (!(url in oldGitDeps.direct)) {
+      newIndirectGitDeps[url] = locked[url];
+    }
+  }
+
+  const newGitDepsFile = JSON.stringify({
+    direct: newDirectGitDeps,
+    indirect: newIndirectGitDeps
+  }, null, 4);
+
+  fs.writeFileSync('elm-git.json', newGitDepsFile, { encoding: 'utf-8' });
 }
 
 
