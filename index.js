@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const gitInPath = require('simple-git');
 const isGitUrl = require('is-git-url');
+const semver = require('semver');
 
 const gitRoot = gitInPath(); // git client for current working directory
 const storagePath = path.join('elm-stuff', 'gitdeps');
@@ -26,9 +27,8 @@ function ensureDependencies() {
     return;
   }
 
-  const gitDeps = elmJson.type === 'application' ?
-        elmJson['git-dependencies'].direct
-        : elmJson['git-dependencies'];
+  const gitDeps = buildDependencyLock(elmJson);
+  elmJson['locked'] = gitDeps;
 
   if (!fs.existsSync('elm-stuff')) {
     fs.mkdirSync('elm-stuff');
@@ -46,6 +46,20 @@ function ensureDependencies() {
   next(elmJson);
 }
 
+function buildDependencyLock(elmJson) {
+  let locked = {};
+
+  if (elmJson.type === 'application') {
+    locked = Object.assign({},
+                           elmJson['git-dependencies'].direct,
+                           elmJson['git-dependencies'].indirect);
+  } else {
+    locked = Object.assign({}, elmJson['git-dependencies']);
+  }
+  
+  return locked;
+}
+
 function buildUpdateChain(gitDeps, next) {
   for (const url in gitDeps) {
     const ref = gitDeps[url];
@@ -54,11 +68,11 @@ function buildUpdateChain(gitDeps, next) {
 
     if (fs.existsSync(repoPath)) {
       next = ((next) => {
-        return (opts) => updateDependency(repoPath, ref, opts, next);
+        return (opts) => updateDependency(subPath, repoPath, ref, opts, next);
       })(next);
     } else {
       next = ((next) => {
-        return (opts) => cloneDependency(url, repoPath, ref, opts, next);
+        return (opts) => cloneDependency(url, subPath, repoPath, ref, opts, next);
       })(next);
     }
   }
@@ -77,28 +91,70 @@ function pathify(url) {
   return url.slice(colon, end);
 }
 
-function cloneDependency(url, repoPath, ref, opts, next) {
-  console.log(`cloning ${url} into ${repoPath} and checking out ${ref}`);
-
-  gitRoot.clone(url, repoPath, () => {
-    const git = gitInPath(repoPath);
-    afterUpdate(git, repoPath, ref, opts, next);
-  });
-}
-
-function updateDependency(repoPath, ref, opts, next) {
-  console.log(`updating ${repoPath} to ${ref}`);
-  const git = gitInPath(repoPath);
-
-  git.branch((err, branchSummary) => {
-    if (branchSummary.current === ref) {
-      afterCheckout(repoPath, opts, next);
+function cloneDependency(url, name, repoPath, ref, opts, next) {
+  gitRoot.clone(url, repoPath, (err) => {
+    if (err) {
+      console.error(err);
       return;
     }
 
-    git.fetch(['origin'], () => {
+    const git = gitInPath(repoPath);
+    resolveRef(git, repoPath, ref, opts, (ref) => {
+      console.log(`${name} => ${ref}`);
       afterUpdate(git, repoPath, ref, opts, next);
     });
+  });
+}
+
+function updateDependency(name, repoPath, ref, opts, next) {
+  const git = gitInPath(repoPath);
+
+  resolveRef(git, repoPath, ref, opts, (resolvedRef) => {
+    git.branch((err, branchSummary) => {
+      if (resolvedRef != null && branchSummary.current === resolvedRef) {
+        console.log(`${name} => ${resolvedRef}`);
+        afterCheckout(repoPath, opts, next);
+        return;
+      }
+
+      // If range has been coerced to a version, we know we have it already
+      if (ref !== resolvedRef && semver.valid(resolvedRef)) {
+        console.log(`${name} => ${resolvedRef}`);
+        afterUpdate(git, repoPath, resolvedRef, opts, next);
+        return;
+      }
+
+      git.fetch(['origin'], (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+
+        if (resolvedRef == null) {
+          resolveRef(git, repoPath, ref, opts, (newResolvedRef) => {
+            console.log(`${name} => ${newResolvedRef}`);
+            afterUpdate(git, repoPath, newResolvedRef, opts, next);
+          });
+        } else {
+          console.log(`${name} => ${resolvedRef}`);
+          afterUpdate(git, repoPath, resolvedRef, opts, next);
+        }
+      });
+    });
+  });
+}
+
+function resolveRef(git, repoPath, ref, opts, next) {
+  const semverRange = toSemVerRange(ref);
+  if (semverRange == null) {
+    next(ref);
+    return;
+  }
+
+  git.tags((_, tagSummary) => {
+    const matchingTags = withinSemverRange(semverRange, tagSummary.all);
+    ref = largestSemver(matchingTags);
+    next(ref);
   });
 }
 
@@ -110,7 +166,12 @@ function afterUpdate(git, repoPath, ref, opts, next) {
         return;
       }
 
-      git.checkout(ref, () => {
+      git.checkout(ref, (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+
         afterCheckout(repoPath, opts, next);
       });
     });
@@ -145,7 +206,7 @@ function afterCheckout(repoPath, opts, next) {
     return;
   }
   
-  const depSources = ['src'];
+  const depSources = ['src']; // Can packages have source directories?
   const depGitDeps = depElmJson['git-dependencies'] || {};
 
   next = ((next) => {
@@ -153,8 +214,6 @@ function afterCheckout(repoPath, opts, next) {
   })(next);
 
   next = buildUpdateChain(depGitDeps, next);
-
-  console.log('done');
   next(opts);
 }
 
@@ -300,7 +359,7 @@ function checkAppDependenciesObject(deps, depsErr) {
       return depsErr;
     }
 
-    if (toSemVer(val) == null) {
+    if (semver.valid(val) == null) {
       return depsErr;
     }
   }
@@ -377,31 +436,15 @@ function verifyPackageElmJson(elmJson) {
   return '';
 }
 
-
-/* SEMVER */
-
 function isObject(obj) {
   return obj != null && !Array.isArray(obj) && typeof obj === 'object';
 }
 
+/* SEMVER */
+
 function isProjectName(str) {
   const regex = /^[\w-]+\/[\w-]+$/;
   return regex.test(str);
-}
-
-function toSemVer(str) {
-  const semver = /^[0-9]+.[0-9]+.[0-9]+$/;
-  if (!semver.test(str)) {
-    return null;
-  }
-
-  const parts = str.split('.');
-  return {
-    ctor: 'exact',
-    major: parseInt(parts[0]),
-    minor: parseInt(parts[1]),
-    patch: parseInt(parts[2])
-  };
 }
 
 function toSemVerRange(str) {
@@ -415,16 +458,40 @@ function toSemVerRange(str) {
   }
 
   const [lower, upper] = result;
-  lowerBound = toSemVer(lower.trim());
-  upperBound = toSemVer(upper.trim());
+  lowerBound = semver.valid(lower.trim());
+  upperBound = semver.valid(upper.trim());
 
   if (lowerBound == null || upperBound == null) {
     return null;
   }
 
-  return {
-    ctor: 'range',
-    lower: lowerBound,
-    upper: upperBound
-  };
+  return `>=${lowerBound} <${upperBound}`;
+}
+
+function withinSemverRange(range, tags) {
+  return tags.filter((tag) => {
+    const semverTag = semver.valid(tag);
+    if (semverTag == null) {
+      return false;
+    }
+
+    return semver.satisfies(semverTag, range);
+  });
+}
+
+function largestSemver(tags) {
+  if (tags.length === 0) {
+    return null;
+  }
+
+  let largest = tags[0];
+
+  for (let i = 0; i < tags.length; i++) {
+    const tag = tags[i];
+    if (semver.gt(tag, largest)) {
+      largest = tag;
+    }
+  }
+
+  return largest;
 }

@@ -2,7 +2,7 @@
   "git-dependencies": {
     "direct": {
       "git@github.com:Skinney/elm-git-example1.git": "1.0.0",
-      "git@github.com:Skinney/elm-git-example2.git": "1.0.1"
+      "git@github.com:Skinney/elm-git-example2.git": "1.0.2"
     },
     "indirect": {
 
