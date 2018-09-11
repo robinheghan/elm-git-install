@@ -21,9 +21,9 @@ if (args.length === 0) {
 function ensureDependencies() {
   const elmJson = readElmJson('');
 
-  const verificationError = verifyElmJson(elmJson);
+  const verificationError = verifyApplicationElmJson(elmJson);
   if (verificationError !== '') {
-    console.log(storagePath + ': Not valid elm.json file');
+    console.log('Invalid elm.json file');
     console.log(verificationError);
     return;
   }

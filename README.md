@@ -40,7 +40,9 @@ If your project is an Elm package, it should look like this:
 
 For both applications and packages, you can specify a git SHA or tag instead of a semver formated tag.
 
-You can take a look in the `example` folder for a practical example.
+`elm-git-install` will fail if run in a package context. This is because Elm only supports setting `source-directories` for applications. As noted above though, we do support `elm-git.json` files in packages, so you are able to define transitive dependencies. You'll likely need to create an application for building and testing the package though.
+
+For a practical example, check the `example` folder.
 
 ## How does it work
 
