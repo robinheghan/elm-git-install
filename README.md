@@ -6,7 +6,7 @@ This tool allows you to install Elm packages using git. Any git remote is suppor
 
 ## How to use
 
-First, install using `npm`: `npm install elm-git-install`
+First, install using `npm`: `npm install -g elm-git-install`
 
 Then create an `elm-git.json` file in your root directory.
 
@@ -41,6 +41,8 @@ If your project is an Elm package, it should look like this:
 For both applications and packages, you can specify a git SHA or tag instead of a semver formated tag.
 
 `elm-git-install` will fail if run in a package context. This is because Elm only supports setting `source-directories` for applications. As noted above though, we do support `elm-git.json` files in packages, so you are able to define transitive dependencies. You'll likely need to create an application for building and testing the package though.
+
+Once you're satisfied with your `elm-git.json` file, you can simply run `elm-git-install` to retrieve your dependencies.
 
 For a practical example, check the `example` folder.
 
