@@ -165,7 +165,7 @@ function resolveRef(git, url, repoPath, ref, opts, next) {
       console.error(`A dependency expects that ${url} satisfies ${ref}, but is locked at ${lockedVersion}`);
     }
 
-    return lockedVersion;
+    return next(lockedVersion);
   }
 
   git.tags((_, tagSummary) => {
