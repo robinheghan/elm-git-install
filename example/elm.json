@@ -1,9 +1,9 @@
 {
     "type": "application",
     "source-directories": [
-        "elm-stuff/gitdeps/Skinney/elm-git-example1/src",
-        "elm-stuff/gitdeps/Skinney/elm-git-example2/src",
-        "elm-stuff/gitdeps/Skinney/elm-git-example3/src",
+        "elm-stuff/gitdeps/github.com/Skinney/elm-git-example1.git/src",
+        "elm-stuff/gitdeps/github.com/Skinney/elm-git-example2.git/src",
+        "elm-stuff/gitdeps/github.com/Skinney/elm-git-example3.git/src",
         "src"
     ],
     "elm-version": "0.19.0",

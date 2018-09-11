@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const url = require('url');
 const gitInPath = require('simple-git');
 const isGitUrl = require('is-git-url');
 const semver = require('semver');
@@ -80,15 +81,17 @@ function buildUpdateChain(gitDeps, next) {
   return next;
 }
 
-function pathify(url) {
-  const colon = url.indexOf(':') + 1;
-  let end = url.indexOf('.git');
+function pathify(giturl) {
+  const sslRegex = /^([a-zA-Z0-9_]+)@([a-zA-Z0-9._-]+):(.*)$/;
 
-  if (end === -1) {
-    end = url.length;
+  // If in ssl format, convert to valid url
+  if (sslRegex.test(giturl)) {
+    const parts = giturl.match(sslRegex);
+    giturl = `ssh://${parts[1]}@${parts[2]}/${parts[3]}`
   }
-  
-  return url.slice(colon, end);
+
+  const url = new URL(giturl);
+  return path.join(url.host, url.pathname);
 }
 
 function cloneDependency(url, repoPath, ref, opts, next) {
@@ -101,7 +104,7 @@ function cloneDependency(url, repoPath, ref, opts, next) {
     }
 
     const git = gitInPath(repoPath);
-    resolveRef(git, repoPath, ref, opts, (ref) => {
+    resolveRef(git, url, repoPath, ref, opts, (ref) => {
       console.log(`${name} => ${ref}`);
       afterUpdate(git, url, repoPath, ref, opts, next);
     });
@@ -321,8 +324,10 @@ function writeElmJson(elmJson) {
   }
 
   const newGitDepsFile = JSON.stringify({
-    direct: newDirectGitDeps,
-    indirect: newIndirectGitDeps
+    'git-dependencies': {
+      direct: newDirectGitDeps,
+      indirect: newIndirectGitDeps
+    }
   }, null, 4);
 
   fs.writeFileSync('elm-git.json', newGitDepsFile, { encoding: 'utf-8' });
