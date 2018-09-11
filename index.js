@@ -30,6 +30,7 @@ function ensureDependencies() {
 
   const gitDeps = buildDependencyLock(elmJson);
   elmJson['locked'] = gitDeps;
+  elmJson['handled'] = {};
 
   if (!fs.existsSync('elm-stuff')) {
     fs.mkdirSync('elm-stuff');
@@ -67,15 +68,17 @@ function buildUpdateChain(gitDeps, next) {
     const subPath = pathify(url);
     const repoPath = path.join(storagePath, subPath);
 
-    if (fs.existsSync(repoPath)) {
-      next = ((next) => {
-        return (opts) => updateDependency(url, repoPath, ref, opts, next);
-      })(next);
-    } else {
-      next = ((next) => {
-        return (opts) => cloneDependency(url, repoPath, ref, opts, next);
-      })(next);
-    }
+    next = ((next) => {
+      return (opts) => {
+        if (url in opts['handled']) {
+          next(opts);
+        } else if (fs.existsSync(repoPath)) {
+          updateDependency(url, repoPath, ref, opts, next);
+        } else {
+          cloneDependency(url, repoPath, ref, opts, next);
+        }
+      }
+    })(next);
   }
 
   return next;
@@ -224,6 +227,7 @@ function afterCheckout(url, repoPath, ref, opts, next) {
   }
 
   opts['locked'][url] = ref;
+  opts['handled'][url] = true;
   
   const depSources = ['src']; // Can packages have source directories?
   const depGitDeps = depElmJson['git-dependencies'] || {};
