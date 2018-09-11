@@ -1,11 +1,8 @@
 {
   "name": "elm-git-install",
   "version": "0.1.0",
-  "description": "An extension of elm's package manager with support for private git packages.",
+  "description": "A tool for installing private Elm packages from any git url.",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Skinney/elm-git-install.git"
