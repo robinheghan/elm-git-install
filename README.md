@@ -1,14 +1,14 @@
 # elm-git-install (alpha)
 
-__Note: This tool is meant for businesses who whish to use their internal packages without exposing them to the world wide web. If you're working on an open-source library, you should use Elm's built-in package manager.__
+__Note: This tool is meant for businesses who wish to use their internal packages without exposing them to the world wide web. If you're working on an open-source library, you should instead use Elm's built-in package manager.__
 
-This tool allows you to install Elm packages using git. Any git remote is supported, and you can specify which commit SHA or git tag (preferably semver formated) you want to use. Other than supporting git remotes, the tool aims to mimick the behaviour of Elm's built-in package manger.
+This tool allows you to install Elm packages using git. Any git remote is supported, and you can specify which commit SHA or git tag (preferably semver formated) you want to use. Other than supporting git remotes, the tool aims to mimic the behaviour of Elm's built-in package manager.
 
 ## How to use
 
 Install with `npm`: `npm install -g elm-git-install`
 
-Then create an `elm-git.json` file in your root directory.
+Then create an `elm-git.json` file in your elm project root directory (i.e. the same place as `elm.json`).
 
 If the `type` property in your `elm.json` file is `application`, your `elm-git.json` file should look something like this:
 
