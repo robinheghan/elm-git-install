@@ -43,7 +43,10 @@ function ensureDependencies() {
   }
 
   elmJson['source-directories'] = elmJson['source-directories'].filter(
-    (src) => !src.startsWith(storagePath)
+    // We force the seperator to be / when dealing with package.json
+    // This so paths don't change when windows and linux users work
+    // on the same repo.
+    (src) => !src.startsWith(storagePath.replace(path.sep, '/'))
   );
 
   const next = buildUpdateChain(gitDeps, writeElmJson);
@@ -253,7 +256,7 @@ function populateSources(repoPath, depSources, opts, next) {
 
   const newSources = dedupe(opts['source-directories'], depSources);
   newSources.sort();
-  opts['source-directories'] = newSources;
+  opts['source-directories'] = newSources.map(s => s.replace(path.sep, '/'));
 
   next(opts);
 }
