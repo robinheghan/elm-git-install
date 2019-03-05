@@ -1,22 +1,25 @@
 {
-  "name": "elm-git-install",
-  "version": "0.1.1",
-  "description": "A tool for installing private Elm packages from any git url.",
-  "main": "index.js",
-  "bin": "index.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Skinney/elm-git-install.git"
-  },
-  "author": "Robin Heggelund Hansen",
-  "license": "BSD-3-Clause",
-  "bugs": {
-    "url": "https://github.com/Skinney/elm-git-install/issues"
-  },
-  "homepage": "https://github.com/Skinney/elm-git-install#readme",
-  "dependencies": {
-    "is-git-url": "^1.0.0",
-    "semver": "^5.5.1",
-    "simple-git": "^1.96.0"
-  }
+    "name": "elm-git-install",
+    "version": "0.1.2",
+    "description": "A tool for installing private Elm packages from any git url.",
+    "main": "index.js",
+    "bin": "index.js",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Skinney/elm-git-install.git"
+    },
+    "author": "Robin Heggelund Hansen",
+    "license": "BSD-3-Clause",
+    "bugs": {
+        "url": "https://github.com/Skinney/elm-git-install/issues"
+    },
+    "homepage": "https://github.com/Skinney/elm-git-install#readme",
+    "dependencies": {
+        "is-git-url": "^1.0.0",
+        "semver": "^5.5.1",
+        "simple-git": "^1.96.0"
+    },
+    "engines": {
+        "node": ">=10.0.0"
+    }
 }
