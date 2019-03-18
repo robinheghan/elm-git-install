@@ -248,15 +248,15 @@ function afterCheckout(url, repoPath, ref, opts, next) {
 function populateSources(repoPath, depSources, opts, next) {
   depSources = depSources
     .filter((src) => {
-      return !src.startsWith(storagePath);
+      return !src.startsWith(storagePath.replace(path.sep, '/'));
     })
     .map((src) => {
-      return path.join(repoPath, src);
+      return path.join(repoPath, src).replace(path.sep, '/');
     });
 
   const newSources = dedupe(opts['source-directories'], depSources);
   newSources.sort();
-  opts['source-directories'] = newSources.map(s => s.replace(path.sep, '/'));
+  opts['source-directories'] = newSources;
 
   next(opts);
 }
