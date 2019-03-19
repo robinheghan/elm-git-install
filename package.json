@@ -17,7 +17,8 @@
     "dependencies": {
         "is-git-url": "^1.0.0",
         "semver": "^5.5.1",
-        "simple-git": "^1.96.0"
+        "simple-git": "^1.96.0",
+        "upath": "^1.1.2"
     },
     "engines": {
         "node": ">=10.0.0"

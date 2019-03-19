@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
-const path = require('path');
+const path = require('upath');
 const url = require('url');
 const gitInPath = require('simple-git');
 const isGitUrl = require('is-git-url');
@@ -46,7 +46,7 @@ function ensureDependencies() {
     // We force the seperator to be / when dealing with package.json
     // This so paths don't change when windows and linux users work
     // on the same repo.
-    (src) => !src.startsWith(storagePath.replace(path.sep, '/'))
+    (src) => !src.startsWith(storagePath)
   );
 
   const next = buildUpdateChain(gitDeps, writeElmJson);
@@ -248,10 +248,10 @@ function afterCheckout(url, repoPath, ref, opts, next) {
 function populateSources(repoPath, depSources, opts, next) {
   depSources = depSources
     .filter((src) => {
-      return !src.startsWith(storagePath.replace(path.sep, '/'));
+      return !src.startsWith(storagePath);
     })
     .map((src) => {
-      return path.join(repoPath, src).replace(path.sep, '/');
+      return path.join(repoPath, src);
     });
 
   const newSources = dedupe(opts['source-directories'], depSources);
