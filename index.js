@@ -23,16 +23,21 @@ if (args.length === 0) {
 } else if (args.length === 1) {
   switch (args[0]) {
     case 'init':
-      fs.writeFileSync(
-        'elm-git.json',
-        JSON.stringify(
-          {'git-dependencies': {direct: {}, indirect: {}}},
-          null,
-          4
-        )
-      );
+      if (fs.existsSync('./elm-git.json')) {
+        console.log('there is already an elm-git.json file in this directory');
+      } else {
+        fs.writeFileSync(
+          'elm-git.json',
+          JSON.stringify(
+            {'git-dependencies': {direct: {}, indirect: {}}},
+            null,
+            4
+          )
+        );
 
-      console.log('elm-git.json has been created in the current directory');
+        console.log('elm-git.json has been created in the current directory');
+      }
+
       break;
     default:
       console.log(helpMsg);
