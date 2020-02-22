@@ -14,7 +14,7 @@ const storagePath = path.join('elm-stuff', 'gitdeps');
 const args = process.argv.slice(2);
 
 const helpMsg =
-`use 'elm-git-install' with no arguments to install the dependencies in you 'elm-git.json' file
+`use 'elm-git-install' with no arguments to install the dependencies in your 'elm-git.json' file
 
 use 'elm-git-install init' to create an 'elm-git.json' file in the current directory`;
 
