@@ -13,10 +13,38 @@ const storagePath = path.join('elm-stuff', 'gitdeps');
 
 const args = process.argv.slice(2);
 
+const helpMsg =
+`use 'elm-git-install' with no arguments to install the dependencies in your 'elm-git.json' file
+
+use 'elm-git-install init' to create an 'elm-git.json' file in the current directory`;
+
 if (args.length === 0) {
   ensureDependencies();
+} else if (args.length === 1) {
+  switch (args[0]) {
+    case 'init':
+      if (fs.existsSync('./elm-git.json')) {
+        console.log('there is already an elm-git.json file in this directory');
+      } else {
+        fs.writeFileSync(
+          'elm-git.json',
+          JSON.stringify(
+            {'git-dependencies': {direct: {}, indirect: {}}},
+            null,
+            4
+          )
+        );
+
+        console.log('elm-git.json has been created in the current directory');
+      }
+
+      break;
+    default:
+      console.log(helpMsg);
+      break;
+  }
 } else {
-  console.error('This tool doesn\'t take any arguments');
+  console.log(helpMsg);
 }
 
 
