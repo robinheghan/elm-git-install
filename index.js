@@ -65,7 +65,7 @@ function ensureDependencies() {
   if (!fs.existsSync('elm-stuff')) {
     fs.mkdirSync('elm-stuff');
   }
-  
+
   if (!fs.existsSync(storagePath)) {
     fs.mkdirSync(storagePath);
   }
@@ -91,7 +91,7 @@ function buildDependencyLock(elmJson) {
   } else {
     locked = Object.assign({}, elmJson['git-dependencies']);
   }
-  
+
   return locked;
 }
 
@@ -261,7 +261,7 @@ function afterCheckout(url, repoPath, ref, opts, next) {
 
   opts['locked'][url] = ref;
   opts['handled'][url] = true;
-  
+
   const depSources = ['src']; // Can packages have source directories?
   const depGitDeps = depElmJson['git-dependencies'] || {};
 
@@ -410,7 +410,7 @@ function verifyApplicationElmJson(elmJson) {
   if (gitDepsErr !== '') {
     return gitDepsErr
   }
-  
+
   return '';
 }
 
