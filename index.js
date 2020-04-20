@@ -214,18 +214,19 @@ function resolveRef(git, url, repoPath, ref, opts, next) {
 function afterUpdate(git, url, repoPath, ref, opts, next) {
   git.tags((_, tagSummary) => {
     git.branch((err, branchSummary) => {
-      if (refIsBranch(branchSummary, tagSummary, ref)) {
-        console.error('Branches are not supported, use semver tags or sha\'s.');
-        return;
-      }
-
       git.checkout(ref, (err) => {
         if (err) {
           console.error(err);
           return;
         }
 
-        afterCheckout(url, repoPath, ref, opts, next);
+        if (refIsBranch(branchSummary, tagSummary, ref)) {
+          git.log((_, logs) => {
+            afterCheckout(url, repoPath, logs.latest.hash, opts, next);
+          });
+        } else {
+          afterCheckout(url, repoPath, ref, opts, next);
+        }
       });
     });
   });
