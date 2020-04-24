@@ -11,9 +11,13 @@ const gitRoot = gitInPath(); // git client for current working directory
 const storagePath = path.join('elm-stuff', 'gitdeps');
 
 const helpMsg =
-`use 'elm-git-install' with no arguments to install the dependencies in your 'elm-git.json' file
+`usage:
+'elm-git-install' will install the dependencies in your 'elm-git.json' file.
 
-use 'elm-git-install init' to create an 'elm-git.json' file in the current directory`;
+'elm-git-install init' will create an 'elm-git.json' file in the current directory.
+
+'elm-git-install install URL ?VERSION' to add the git repo URL as a dependency, pointing to the tag or SHA specified by VERISON. If no VERSION is specified, the latest tag is installed.
+`;
 
 
 const args = process.argv.slice(2);
