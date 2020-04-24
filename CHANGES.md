@@ -1,6 +1,6 @@
 # Change log
 
-## 0.2.0
+## Next release
 
 * Add `install` command to add a new git dependency from command line, without needing to manually edit `elm-git.json`.
 
