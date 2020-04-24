@@ -10,6 +10,8 @@ const semver = require('semver');
 const gitRoot = gitInPath(); // git client for current working directory
 const storagePath = path.join('elm-stuff', 'gitdeps');
 
+const gitHubShorthandRE = /^[\w\d]+(?:-[\w\d]+)*\/[\w\d]+(?:-[\w\d]+)*$/i;
+
 const helpMsg =
 `usage:
 'elm-git-install' will install the dependencies in your 'elm-git.json' file.
@@ -67,8 +69,6 @@ function initializeElmGitJson() {
 
   console.log('elm-git.json has been created in the current directory');
 }
-
-const gitHubShorthandRE = /^[\w\d]+(?:-[\w\d]+)*\/[\w\d]+(?:-[\w\d]+)*$/i;
 
 function installPackage(packageRef, version) {
   const url = gitHubShorthandRE.test(packageRef)
