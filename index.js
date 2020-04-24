@@ -27,8 +27,12 @@ switch (command) {
   case 'init':
     initializeElmGitJson();
     break;
+  case 'install':
+    installPackage(args[1], args[2]);
+    break;
   default:
     console.log(helpMsg);
+    break;
 }
 
 
@@ -50,9 +54,62 @@ function initializeElmGitJson() {
   console.log('elm-git.json has been created in the current directory');
 }
 
+function installPackage(url, version) {
+  version = version || 'latest';
+
+  if (!fs.existsSync('./elm-git.json')) {
+    initializeElmGitJson();
+  }
+
+  const elmJson = readElmJson('');
+
+  const verificationError = verifyApplicationElmJson(elmJson);
+  if (verificationError !== '') {
+    console.log('Invalid elm.json file');
+    console.log(verificationError);
+    return;
+  }
+
+  const gitDeps = buildDependencyLock(elmJson);
+  if (url in gitDeps) {
+    console.error(`${url} is already installed. Aborting...`);
+    return;
+  }
+
+  const subPath = pathify(url);
+  const repoPath = path.join(storagePath, subPath);
+
+  gitRoot.clone(url, repoPath, (err) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+
+    const git = gitInPath(repoPath);
+    if (version === 'latest') {
+      git.tags((_, tagSummary) => {
+        ref = tagSummary.latest;
+        addEntryToElmGitJson(url, ref);
+        ensureDependencies();
+      });
+    } else {
+      resolveRef(git, url, repoPath, version, elmJson, (ref) => {
+        addEntryToElmGitJson(url, ref);
+        ensureDependencies();
+      });
+    }
+  });
+}
+
+function addEntryToElmGitJson(url, ref) {
+  const gitDepsPath = './elm-git.json';
+  const gitDeps = JSON.parse(fs.readFileSync(gitDepsPath, { encoding: 'utf-8' }));
+  gitDeps['git-dependencies'].direct[url] = ref;
+  fs.writeFileSync(gitDepsPath, JSON.stringify(gitDeps, null, 4), { encoding: 'utf-8' });
+}
 
 function ensureDependencies() {
-  const elmJson = readElmJson('');
+  elmJson = readElmJson('');
 
   const verificationError = verifyApplicationElmJson(elmJson);
   if (verificationError !== '') {
@@ -74,9 +131,6 @@ function ensureDependencies() {
   }
 
   elmJson['source-directories'] = elmJson['source-directories'].filter(
-    // We force the seperator to be / when dealing with package.json
-    // This so paths don't change when windows and linux users work
-    // on the same repo.
     (src) => !src.startsWith(storagePath)
   );
 
@@ -88,9 +142,11 @@ function buildDependencyLock(elmJson) {
   let locked = {};
 
   if (elmJson.type === 'application') {
-    locked = Object.assign({},
+    locked = Object.assign(
+      {},
       elmJson['git-dependencies'].direct,
-      elmJson['git-dependencies'].indirect);
+      elmJson['git-dependencies'].indirect
+    );
   } else {
     locked = Object.assign({}, elmJson['git-dependencies']);
   }
