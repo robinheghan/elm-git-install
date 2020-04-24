@@ -25,9 +25,19 @@ switch (command) {
     ensureDependencies();
     break;
   case 'init':
+    if (args.length > 1) {
+      console.log(helpMsg);
+      break;
+    }
+
     initializeElmGitJson();
     break;
   case 'install':
+    if (args.length < 2 || args.length > 3) {
+      console.log(helpMsg);
+      break;
+    }
+
     installPackage(args[1], args[2]);
     break;
   default:
