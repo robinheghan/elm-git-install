@@ -68,7 +68,13 @@ function initializeElmGitJson() {
   console.log('elm-git.json has been created in the current directory');
 }
 
-function installPackage(url, version) {
+const gitHubShorthandRE = /^[\w\d]+(?:-[\w\d]+)*\/[\w\d]+(?:-[\w\d]+)*$/i;
+
+function installPackage(packageRef, version) {
+  const url = gitHubShorthandRE.test(packageRef)
+    ? 'https://github.com/' + packageRef + '.git'
+    : packageRef;
+
   version = version || 'latest';
 
   if (!fs.existsSync('./elm-git.json')) {
