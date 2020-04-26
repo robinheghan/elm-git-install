@@ -10,13 +10,17 @@ const semver = require('semver');
 const gitRoot = gitInPath(); // git client for current working directory
 const storagePath = path.join('elm-stuff', 'gitdeps');
 
+const gitHubShorthandRE = /^[\w\d]+(?:-[\w\d]+)*\/[\w\d]+(?:-[\w\d]+)*$/i;
+
 const helpMsg =
 `usage:
 'elm-git-install' will install the dependencies in your 'elm-git.json' file.
 
 'elm-git-install init' will create an 'elm-git.json' file in the current directory.
 
-'elm-git-install install URL ?VERSION' to add the git repo URL as a dependency, pointing to the tag or SHA specified by VERISON. If no VERSION is specified, the latest tag is installed.
+'elm-git-install install PACKAGE ?VERSION' to add PACKAGE as a dependency, pointing to the tag or SHA specified by VERISON. If no VERSION is specified, the latest tag is installed.
+
+PACKAGE can either be a URL to a git repo or a string of the form 'author/repo', which is expanded to a GitHub URL.
 `;
 
 
@@ -68,7 +72,11 @@ function initializeElmGitJson() {
   console.log('elm-git.json has been created in the current directory');
 }
 
-function installPackage(url, version) {
+function installPackage(package, version) {
+  const url = gitHubShorthandRE.test(package)
+    ? 'https://github.com/' + package + '.git'
+    : package;
+
   version = version || 'latest';
 
   if (!fs.existsSync('./elm-git.json')) {
