@@ -10,18 +10,128 @@ const semver = require('semver');
 const gitRoot = gitInPath(); // git client for current working directory
 const storagePath = path.join('elm-stuff', 'gitdeps');
 
+const gitHubShorthandRE = /^[\w\d]+(?:-[\w\d]+)*\/[\w\d]+(?:-[\w\d]+)*$/i;
+
+const helpMsg =
+`usage:
+'elm-git-install' will install the dependencies in your 'elm-git.json' file.
+
+'elm-git-install init' will create an 'elm-git.json' file in the current directory.
+
+'elm-git-install install PACKAGE ?VERSION' to add PACKAGE as a dependency, pointing to the tag or SHA specified by VERISON. If no VERSION is specified, the latest tag is installed.
+
+PACKAGE can either be a URL to a git repo or a string of the form 'author/repo', which is expanded to a GitHub URL.
+`;
+
 
 const args = process.argv.slice(2);
+const command = args[0];
 
-if (args.length === 0) {
-  ensureDependencies();
-} else {
-  console.error('This tool doesn\'t take any arguments');
+
+switch (command) {
+  case undefined:
+    ensureDependencies();
+    break;
+  case 'init':
+    if (args.length > 1) {
+      console.log(helpMsg);
+      break;
+    }
+
+    initializeElmGitJson();
+    break;
+  case 'install':
+    if (args.length < 2 || args.length > 3) {
+      console.log(helpMsg);
+      break;
+    }
+
+    installPackage(args[1], args[2]);
+    break;
+  default:
+    console.log(helpMsg);
+    break;
 }
 
 
-function ensureDependencies() {
+function initializeElmGitJson() {
+  if (fs.existsSync('./elm-git.json')) {
+    console.log('there is already an elm-git.json file in this directory');
+    return;
+  }
+
+  fs.writeFileSync(
+    'elm-git.json',
+    JSON.stringify(
+      {'git-dependencies': {direct: {}, indirect: {}}},
+      null,
+      4
+    )
+  );
+
+  console.log('elm-git.json has been created in the current directory');
+}
+
+function installPackage(package, version) {
+  const url = gitHubShorthandRE.test(package)
+    ? 'https://github.com/' + package + '.git'
+    : package;
+
+  version = version || 'latest';
+
+  if (!fs.existsSync('./elm-git.json')) {
+    initializeElmGitJson();
+  }
+
   const elmJson = readElmJson('');
+
+  const verificationError = verifyApplicationElmJson(elmJson);
+  if (verificationError !== '') {
+    console.log('Invalid elm.json file');
+    console.log(verificationError);
+    return;
+  }
+
+  const gitDeps = buildDependencyLock(elmJson);
+  if (url in gitDeps) {
+    console.error(`${url} is already installed. Aborting...`);
+    return;
+  }
+
+  const subPath = pathify(url);
+  const repoPath = path.join(storagePath, subPath);
+
+  gitRoot.clone(url, repoPath, (err) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+
+    const git = gitInPath(repoPath);
+    if (version === 'latest') {
+      git.tags((_, tagSummary) => {
+        ref = tagSummary.latest;
+        addEntryToElmGitJson(url, ref);
+        ensureDependencies();
+      });
+    } else {
+      resolveRef(git, url, repoPath, version, elmJson, (ref) => {
+        addEntryToElmGitJson(url, ref);
+        ensureDependencies();
+      });
+    }
+  });
+}
+
+function addEntryToElmGitJson(url, ref) {
+  const gitDepsPath = './elm-git.json';
+  const gitDeps = JSON.parse(fs.readFileSync(gitDepsPath, { encoding: 'utf-8' }));
+  gitDeps['git-dependencies'].direct[url] = ref;
+  fs.writeFileSync(gitDepsPath, JSON.stringify(gitDeps, null, 4), { encoding: 'utf-8' });
+}
+
+function ensureDependencies() {
+  elmJson = readElmJson('');
 
   const verificationError = verifyApplicationElmJson(elmJson);
   if (verificationError !== '') {
@@ -43,9 +153,6 @@ function ensureDependencies() {
   }
 
   elmJson['source-directories'] = elmJson['source-directories'].filter(
-    // We force the seperator to be / when dealing with package.json
-    // This so paths don't change when windows and linux users work
-    // on the same repo.
     (src) => !src.startsWith(storagePath)
   );
 
@@ -57,9 +164,11 @@ function buildDependencyLock(elmJson) {
   let locked = {};
 
   if (elmJson.type === 'application') {
-    locked = Object.assign({},
-                           elmJson['git-dependencies'].direct,
-                           elmJson['git-dependencies'].indirect);
+    locked = Object.assign(
+      {},
+      elmJson['git-dependencies'].direct,
+      elmJson['git-dependencies'].indirect
+    );
   } else {
     locked = Object.assign({}, elmJson['git-dependencies']);
   }
