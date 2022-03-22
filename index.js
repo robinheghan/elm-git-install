@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('upath');
 const url = require('url');
 const gitInPath = require('simple-git');
-const isGitUrl = require('is-git-url');
+const isGitCloneable = require('git-clone-able');
 const semver = require('semver');
 
 const gitRoot = gitInPath(); // git client for current working directory
@@ -561,7 +561,7 @@ function checkAppGitDependenciesObject(deps, depsErr) {
   for (const key in deps) {
     const val = deps[key];
 
-    if (!isGitUrl(key)) {
+    if (!isGitCloneable(key)) {
       return depsErr;
     }
   }
@@ -595,7 +595,7 @@ function verifyPackageElmJson(elmJson) {
   }
 
   for (const key in gitDeps) {
-    if (!isGitUrl(key)) {
+    if (!isGitCloneable(key)) {
       return gitDepErr;
     }
   }
