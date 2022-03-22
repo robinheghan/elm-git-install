@@ -17,7 +17,7 @@
     "dependencies": {
         "git-clone-able": "^0.1.2",
         "semver": "^7.3.2",
-        "simple-git": "^1.132.0",
+        "simple-git": "^3.3.0",
         "upath": "^1.2.0"
     },
     "engines": {
